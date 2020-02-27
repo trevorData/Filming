@@ -1,87 +1,96 @@
-library(dplyr)
-library(tm)
-library(ggmap)
-library(stringr)
-
 setwd("~/Projects/Filming")
 
-raw.df <- read.csv("Filming_Permits.csv")
+library(RSocrata)
+library(dplyr)
+library(ggmap)
+library(stringr)
+library(grid)
+library(ggmapstyles)
 
-# Clean the text
-corpus <- VCorpus(VectorSource(raw.df$COMMENTS))
+# Read in data
+url <- 'https://data.cityofchicago.org/resource/c2az-nhru.json'
+raw.df <- read.socrata(url)
 
-corpus <- tm_map(corpus, content_transformer(tolower))
-corpus <- tm_map(corpus, removeNumbers)
-corpus <- tm_map(corpus, removePunctuation)
-corpus <- tm_map(corpus, removeWords, stopwords())
-corpus <- tm_map(corpus, stripWhitespace)
+# Format data
+raw.df$longitude <- raw.df$longitude %>% as.numeric
+raw.df$latitude  <- raw.df$latitude %>% as.numeric
 
-raw.dtm <- corpus %>% DocumentTermMatrix
-
-# Filter non-frequent words
-dtm <- raw.dtm %>% removeSparseTerms(.9999)
-
-# Create dataframe with word count columns
-dataset <- dtm %>% as.matrix %>% as.data.frame
-dataset$LAT <- raw.df$LATITUDE
-dataset$LON <- raw.df$LONGITUDE
-
-dataset <- dataset[!(dataset$LAT %>% is.na),]
-
-colSums(dataset) %>% View
+df <- raw.df[!is.na(raw.df$comments) & !is.na(raw.df$longitude) & !is.na(raw.df$latitude), ] %>%
+  select(c("comments", "longitude", "latitude"))
 
 # Load Map Background from Google
 register_google(Sys.getenv('gmaps_key'))
 
-mapImage <- get_map(location = c(lon = -87.68, lat = 41.9),
-                    color = "bw",
-                    maptype = "toner-background",
-                    source = 'stamen',
+inset_themes <- theme(axis.title = element_blank(),
+                axis.ticks = element_blank(), 
+                axis.text = element_blank(),
+                plot.background = element_rect(size = 2, color = 'gray40'),
+                plot.margin = unit(c(3,2,1,1), "points"))
+
+main_themes <- theme(axis.title = element_blank(),
+                     axis.ticks = element_blank(), 
+                     axis.text = element_blank())
+
+mapImage <- get_map(location = c(lon = -87.57, lat = 41.88),
+                    #color = "bw",
+                    maptype = "hybrid",
+                    source = 'google',
+                    darken = 1,
                     zoom = 11)
 
-zoomImage <- get_map(location = c(lon = -87.625, lat = 41.88),
+mapImag2 <- get_snazzymap(center = c(lon = -87.57, lat = 41.88),
+                          mapRef = 21086,
+                          zoom = 11)
+
+ggmap(mapImag2)
+
+zoomImage <- get_map(location = c(lon = -87.63, lat = 41.88),
                      color = "bw",
-                     maptype = "toner",
+                     maptype = "toner-lines",
                      source = 'stamen',
-                     zoom = 14)
+                     zoom = 15)
 
-zoomImage <- get_map(location = c(lon = -87.625, lat = 41.88),
-                              color = "bw",
-                              maptype = "terrain-lines",
-                              source = 'stamen',
-                              zoom = 11)
+zoomImag2 <- get_snazzymap(center = c(lon = -87.63, lat = 41.88),
+                           mapRef = 21086,
+                           zoom = 15)
 
-ggmap(zoomImage) +
-  geom_point(data = raw.df[raw.df$COMMENTS %>% str_detect(regex('museum', ignore_case = T)),], 
-             aes(x=LONGITUDE, y=LATITUDE), 
-             color = 'blue')
+keyword <- 'documentary' %>% regex(ignore_case = T)
 
-get
+loop_map <- 
+  ggmap(zoomImag2) +
+  geom_point(data = df[df$comments %>% str_detect(keyword), ], 
+             aes(x=longitude, y=latitude), 
+             color = 'firebrick', 
+             size = 4) + 
+  inset_themes
 
-"empire
-restaurant
-office
-bridge
-bar
-hospital
-exorcist
-shameless
-documentary
-church
-chase
-violent
-hotel
-music video
-drone
-advertisement
-basketball
+ggmap(mapImag2) +
+  geom_point(data = df[df$comments %>% str_detect(keyword), ], 
+             aes(x=longitude, y=latitude), 
+             color = 'firebrick',
+             size=2) + main_themes +
+  loop_map %>% 
+    ggplotGrob %>% 
+    inset(xmin = -87.53, xmax = -87.36, 
+          ymin = 41.725, ymax = 41.86)
+
+"empire 
+exorcist 
+shameless 
+batwoman 
+gotham 
+violent 
+church 
+music video 
 museum
-theater
-cops
-pedestrians
-batwoman
-gotham
-beach
+documentary 
+chase 
+basketball 
+drone 
+bar 
+hospital 
+hotel 
+bridge 
 "
 
 
