@@ -16,11 +16,22 @@ raw.df$longitude <- raw.df$longitude %>% as.numeric
 raw.df$latitude  <- raw.df$latitude %>% as.numeric
 
 df <- raw.df[!is.na(raw.df$comments) & !is.na(raw.df$longitude) & !is.na(raw.df$latitude), ] %>%
-  select(c("comments", "longitude", "latitude"))
+          select(c("comments", "longitude", "latitude"))
 
-# Load Map Background from Google
+# Load Map Backgrounds from Google
 register_google(Sys.getenv('gmaps_key'))
 
+mapNum <- 253319
+
+mapImage <- get_snazzymap(center = c(lon = -87.57, lat = 41.90),
+                          mapRef = mapNum,
+                          zoom = 11)
+
+zoomImage <- get_snazzymap(center = c(lon = -87.63, lat = 41.881),
+                           mapRef = mapNum,
+                           zoom = 15)
+
+# Set plot styles
 inset_themes <- theme(axis.title = element_blank(),
                 axis.ticks = element_blank(), 
                 axis.text = element_blank(),
@@ -31,72 +42,46 @@ main_themes <- theme(axis.title = element_blank(),
                      axis.ticks = element_blank(), 
                      axis.text = element_blank())
 
-mapImage <- get_map(location = c(lon = -87.57, lat = 41.88),
-                    #color = "bw",
-                    maptype = "hybrid",
-                    source = 'google',
-                    darken = 1,
-                    zoom = 11)
+ann_x   <- -87.511
+title_y <- 42.04
 
-mapImag2 <- get_snazzymap(center = c(lon = -87.57, lat = 41.88),
-                          mapRef = 21086,
-                          zoom = 11)
+# Plot Maps
+keyword <- 'chase' %>% regex(ignore_case = T)
 
-ggmap(mapImag2)
-
-zoomImage <- get_map(location = c(lon = -87.63, lat = 41.88),
-                     color = "bw",
-                     maptype = "toner-lines",
-                     source = 'stamen',
-                     zoom = 15)
-
-zoomImag2 <- get_snazzymap(center = c(lon = -87.63, lat = 41.88),
-                           mapRef = 21086,
-                           zoom = 15)
-
-keyword <- 'documentary' %>% regex(ignore_case = T)
-
-loop_map <- 
-  ggmap(zoomImag2) +
+loop_inset <- 
+  (ggmap(zoomImage) +
   geom_point(data = df[df$comments %>% str_detect(keyword), ], 
              aes(x=longitude, y=latitude), 
-             color = 'firebrick', 
-             size = 4) + 
-  inset_themes
-
-ggmap(mapImag2) +
-  geom_point(data = df[df$comments %>% str_detect(keyword), ], 
-             aes(x=longitude, y=latitude), 
-             color = 'firebrick',
-             size=2) + main_themes +
-  loop_map %>% 
+             color = 'mediumpurple4', 
+             size = 3.5) + 
+  inset_themes) %>% 
     ggplotGrob %>% 
-    inset(xmin = -87.53, xmax = -87.36, 
-          ymin = 41.725, ymax = 41.86)
+    inset(xmin = -87.52, xmax = -87.35, 
+          ymin = 41.744, ymax = 41.87)
 
-"empire 
-exorcist 
-shameless 
-batwoman 
-gotham 
-violent 
-church 
-music video 
-museum
-documentary 
-chase 
-basketball 
-drone 
-bar 
-hospital 
-hotel 
-bridge 
-"
+ggmap(mapImage) +
+  geom_point(data = df[df$comments %>% str_detect(keyword), ], 
+             aes(x=longitude, y=latitude), 
+             color = 'mediumpurple4',
+             size=2) + 
+  main_themes +
+  loop_inset +
+  annotate('text', label = 'Chicago Bike Rentals',  
+           family = 'serif', fontface='bold', size = 15, color = 'gray40', 
+           x = ann_x, y = title_y)
 
+colors <- 
+  c('dodgerblue4',
+    'firebrick',
+    'darkgreen',
+    'mediumpurple4')
 
+keywords <-
+  c('Empire', 'Exorcist','Shameless', 'Batwoman', 'Violent', 'Gotham',  'Church', 'Music Video', 
+    'Museum', 'Documentary', 'Chase', 'Drone', 'Bar', 'Hospital', 'Hotel', 'Bridge')
 
-
-
-
-
+for (i in 1:(keywords %>% length)){
+  print(keywords[i])
+  print(colors[i%%4 + 1])
+}
 
