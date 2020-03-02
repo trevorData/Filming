@@ -44,32 +44,16 @@ main_themes <- theme(axis.title = element_blank(),
 
 ann_x   <- -87.511
 title_y <- 42.04
+sub_y   <- 42.015
+word_y  <- 41.99
+
+title <- annotate('text', label = 'Cinema in Chicago',  
+                  family = 'serif', fontface='bold', size = 17.5, color = 'gray40', x = ann_x, y = title_y)
+
+subtitle <- annotate('text', label = 'Locations of public filming permits\nthat include the word:',  
+                     family = 'serif', fontface='bold', size = 6.5, color = 'gray40', x = ann_x, y = sub_y)
 
 # Plot Maps
-keyword <- 'chase' %>% regex(ignore_case = T)
-
-loop_inset <- 
-  (ggmap(zoomImage) +
-  geom_point(data = df[df$comments %>% str_detect(keyword), ], 
-             aes(x=longitude, y=latitude), 
-             color = 'mediumpurple4', 
-             size = 3.5) + 
-  inset_themes) %>% 
-    ggplotGrob %>% 
-    inset(xmin = -87.52, xmax = -87.35, 
-          ymin = 41.744, ymax = 41.87)
-
-ggmap(mapImage) +
-  geom_point(data = df[df$comments %>% str_detect(keyword), ], 
-             aes(x=longitude, y=latitude), 
-             color = 'mediumpurple4',
-             size=2) + 
-  main_themes +
-  loop_inset +
-  annotate('text', label = 'Chicago Bike Rentals',  
-           family = 'serif', fontface='bold', size = 15, color = 'gray40', 
-           x = ann_x, y = title_y)
-
 colors <- 
   c('dodgerblue4',
     'firebrick',
@@ -81,7 +65,33 @@ keywords <-
     'Museum', 'Documentary', 'Chase', 'Drone', 'Bar', 'Hospital', 'Hotel', 'Bridge')
 
 for (i in 1:(keywords %>% length)){
-  print(keywords[i])
-  print(colors[i%%4 + 1])
-}
 
+  # Loop Inset
+  loop_inset <- 
+    (ggmap(zoomImage) +
+       geom_point(data = df[df$comments %>% str_detect(keywords[i] %>% regex(ignore_case = T)), ], 
+                  aes(x=longitude, y=latitude), 
+                  color = colors[i%%4 + 1], 
+                  size = 4.5) + 
+       inset_themes) %>% 
+    ggplotGrob %>% 
+    inset(xmin = -87.52, xmax = -87.35, 
+          ymin = 41.744, ymax = 41.87)
+  
+  # Main Plot
+  ggmap(mapImage) +
+    geom_point(data = df[df$comments %>% str_detect(keywords[i] %>% regex(ignore_case = T)), ], 
+               aes(x=longitude, y=latitude), 
+               color = colors[i%%4 + 1],
+               size=2) + 
+    main_themes +
+    loop_inset +
+    title + subtitle + 
+    annotate('text', label = paste('"', keywords[i], '"', sep = ''),  
+             family = 'serif', fontface='bold', size = 12, color = 'gray40', x = ann_x, y = word_y) 
+  
+  # Save map
+  paste('filming_plot_', keywords[i], '.png', sep = '') %>% 
+    ggsave(device = 'png', height = 9, width = 9, dpi = 'screen')
+  
+}
